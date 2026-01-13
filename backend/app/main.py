@@ -6,7 +6,7 @@ from api.routes.orchestrate import orchestrate_router
 import uuid
 
 # Initialize logging
-init_logging("app")
+init_logging("api")
 
 app = FastAPI(title="OpenFunnel API", version="0.1.0")
 

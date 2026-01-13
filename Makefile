@@ -26,6 +26,12 @@ help:
 	@echo "------------------------------------------------------------"
 	@echo "make redis           start redis only"
 	@echo "------------------------------------------------------------"
+	@echo "------------------------------------------------------------"
+	@echo "make migrate         start alembic"
+	@echo "------------------------------------------------------------"
+	@echo "------------------------------------------------------------"
+	@echo "make migration       new migration"
+	@echo "------------------------------------------------------------"
 	@echo "------------------------- ENV VARS -------------------------"
 	@echo "SCRAPER_WORKERS=N     Number of scraper workers"
 	@echo "EXTRACTOR_WORKERS=N   Number of extractor workers"
@@ -56,6 +62,9 @@ logs:
 	docker compose logs -f
 
 api:
+	@echo ""
+	@echo "============================================================"
+	@echo "STARTING SERVICES..."
 	docker compose up --build postgres redis ollama api
 
 workers:
@@ -79,3 +88,9 @@ db:
 
 redis:
 	docker compose up redis
+
+migrate:
+	docker compose exec api alembic upgrade head
+
+migration:
+	docker compose exec api alembic revision -m "init" --autogenerate

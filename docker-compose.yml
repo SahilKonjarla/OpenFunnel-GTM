@@ -28,7 +28,7 @@ services:
       - ollama
     ports:
       - "8000:8000"
-    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
 
   worker_scraper:
     build: ./backend
@@ -54,7 +54,7 @@ services:
     command: ["python3.12", "-m", "app.workers.extractor_worker"]
 
   ollama:
-    image: ollama-server:latest
+    image: ollama/ollama:latest
     ports:
       - "11434:11434"
     volumes:

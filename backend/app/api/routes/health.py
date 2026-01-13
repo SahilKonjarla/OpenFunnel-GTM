@@ -1,6 +1,10 @@
 from fastapi import APIRouter
+from core.logging import get_logger
 
-health_router = APIRouter()
+router = APIRouter()
+logger = get_logger(__name__)
 
-@health_router.get('/health')
-async def health():
+@router.get("/ping")
+def ping():
+    logger.info("Received ping", extra={"event": "ping"})
+    return {"status": "ok"}

@@ -18,7 +18,7 @@ services:
   api:
     build: ./backend
     environment:
-      POSTGRES_DSN: postgresql+psycogp2://Sahil:app@postgres:5432/openfunnel
+      POSTGRES_DSN: postgresql+psycopg2://Sahil:app@postgres:5432/openfunnel
       REDIS_URL: redis://redis:6379/0
       OLLAMA_URL: http://ollama:11434
       OLLAMA_MODEL: gemma3:4b
@@ -33,7 +33,7 @@ services:
   worker_scraper:
     build: ./backend
     environment:
-      POSTGRES_DSN: postgresql+psycogp2://Sahil:app@postgres:5432/openfunnel
+      POSTGRES_DSN: postgresql+psycopg2://Sahil:app@postgres:5432/openfunnel
       REDIS_URL: redis://redis:6379/0
     depends_on:
       - postgres
@@ -43,7 +43,7 @@ services:
   worker_extractor:
     build: ./backend
     environment:
-      POSTGRES_DSN: postgresql+psycogp2://Sahil:app@postgres:5432/openfunnel
+      POSTGRES_DSN: ppostgresql+psycopg2://Sahil:app@postgres:5432/openfunnel
       REDIS_URL: redis://redis:6379/0
       OLLAMA_URL: http://ollama:11434
       OLLAMA_MODEL: gemma3:4b

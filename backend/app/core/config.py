@@ -6,7 +6,7 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
 
     # Database + Queue settings
-    postgres_dsn: str = "postgresql+psycogp2://Sahil:app@postgres:5432/openfunnel"
+    postgres_dsn: str = "postgresql+psycopg2://Sahil:app@postgres:5432/openfunnel"
     redis_url: str = "redis://localhost:6379/0"
 
     # LLM settings

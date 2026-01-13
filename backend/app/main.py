@@ -1,8 +1,8 @@
 from fastapi import FastAPI, Request
-from core.logging import init_logging, get_logger
-from core.request_context import set_request_id, clear_request_id
-from api.routes.health import health_router
-from api.routes.orchestrate import orchestrate_router
+from app.core.logging import init_logging, get_logger
+from app.core.request_context import set_request_id, clear_request_id
+from app.api.routes.health import health_router
+from app.api.routes.orchestrate import orchestrate_router
 import uuid
 
 # Initialize logging

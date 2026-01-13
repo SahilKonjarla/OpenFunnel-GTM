@@ -13,6 +13,10 @@ class Settings(BaseSettings):
     ollama_url: str = "http://ollama:11434"
     ollama_model: str = "gemma3:4b"
 
+    # Queue settings
+    visibility_timeout_sec: int = 60
+    max_attempts: int = 8
+
     class Config:
         env_file = ".env"
         extra = "ignore"

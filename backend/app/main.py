@@ -17,4 +17,6 @@ app.include_router(orchestrate_router)
 app.include_router(health_router)
 if settings.app_env == "dev":
     from app.api.routes.debug_seed import debug_router
+    from app.api.routes.debug_queue import debug_queue_router
+    app.include_router(debug_queue_router)
     app.include_router(debug_router)

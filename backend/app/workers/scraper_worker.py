@@ -18,7 +18,10 @@ while True:
         continue
 
     set_trace_id(task.trace_id)
-    logger.info("task_start", extra={"event": "task_start", "task_id": task.task_id, "task_type": task.task_type})
+    logger.info(
+        "task_start",
+        extra={"event": "task_start", "task_id": task.task_id, "run_id": task.run_id, "job_posting_id": task.job_posting_id}
+    )
 
     try:
         time.sleep(1)

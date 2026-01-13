@@ -1,8 +1,5 @@
-from fastapi import APIRouter, status
+from fastapi import APIRouter, status, HTTPException
 from app.core.logging import get_logger
-from sqlalchemy.orm import Session
-from sqlalchemy import text
-from redis import Redis
 from app.db.session import db_healthcheck, redis_healthcheck
 
 health_router = APIRouter()
@@ -25,9 +22,10 @@ def health():
             "redis": redis_ok,
         },
     )
-    return (
-        {"status": "error", "postgres": pg_ok, "redis": redis_ok},
-        status.HTTP_503_SERVICE_UNAVAILABLE,
+
+    raise HTTPException(
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        detail={"status": "error", "postgres": pg_ok, "redis": redis_ok},
     )
 
 @health_router.get("/ping", tags=["health"])

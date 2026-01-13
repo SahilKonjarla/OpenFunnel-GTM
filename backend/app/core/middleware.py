@@ -1,13 +1,10 @@
 from __future__ import annotations
-
 import time
 import uuid
 from typing import Callable
-
 from fastapi import Request, Response
-
-from ..core.logging import get_logger
-from ..core.request_context import clear_request_id, set_request_id
+from app.core.logging import get_logger
+from app.core.request_context import clear_request_id, set_request_id
 
 logger = get_logger("api_middleware")
 
@@ -27,6 +24,7 @@ async def request_id_middleware(request: Request, call_next: Callable) -> Respon
 
     try:
         response = await call_next(request)
+        response.headers["X-Request-ID"] = request_id
         return response
     except Exception:
         logger.exception(

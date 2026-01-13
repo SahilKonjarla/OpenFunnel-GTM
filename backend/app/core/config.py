@@ -7,10 +7,10 @@ class Settings(BaseSettings):
 
     # Database + Queue settings
     postgres_dsn: str = "postgresql+psycopg2://Sahil:app@postgres:5432/openfunnel"
-    redis_url: str = "redis://localhost:6379/0"
+    redis_url: str = "redis://redis:6379/0"
 
     # LLM settings
-    ollama_url: str = "http://localhost:11434"
+    ollama_url: str = "http://ollama:11434"
     ollama_model: str = "gemma3:4b"
 
     class Config:

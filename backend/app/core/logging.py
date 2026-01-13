@@ -1,20 +1,17 @@
 from __future__ import annotations
-
 import logging
 import sys
-from datetime import datetime as dt
-from datetime import timezone
-
-from ..core.config import settings
-from ..core.request_context import get_request_id, get_trace_id
+from datetime import datetime as dt, timezone
+from app.core.config import settings
+from app.core.request_context import get_request_id, get_trace_id
 
 class ContextFilter(logging.Filter):
-    def __init__(self, service_name: str):
+    def __init__(self, service: str):
         super().__init__()
-        self.service_name = service_name
+        self.service = service
 
     def filter(self, record: logging.LogRecord) -> bool:
-        record.service_name = self.service_name
+        record.service = self.service
         record.env = settings.app_env
         record.request_id = get_request_id() or ""
         record.trace_id = get_trace_id() or ""
@@ -24,11 +21,15 @@ class KeyValueFormattter(logging.Formatter):
     def format(self, record: logging.LogRecord):
         # ISO timestamp
         ts = dt.now(timezone.utc).isoformat(timespec="milliseconds")
-
         msg = record.getMessage()
+        event = getattr(record, "event", "-")
         base = (
-            f"ts={ts} level={record.levelname} service={getattr(record, 'service', '-')}"
-            f" request_id={getattr(record, 'request_id', '-')} trace_id={getattr(record, 'trace_id', '-')}"
+            f"ts={ts} level={record.levelname}"
+            f" service={getattr(record, 'service', '-')}"
+            f" env={getattr(record, 'env', '-')}"
+            f" event={event}"
+            f" request_id={getattr(record, 'request_id', '-')}"
+            f" trace_id={getattr(record, 'trace_id', '-')}"
         )
 
         # include logger name and the message

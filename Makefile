@@ -42,7 +42,7 @@ help:
 # ============== Config ==============
 SCRAPER_WORKERS ?= 1
 EXTRACTOR_WORKERS ?= 1
-
+REAPER_WORKERS ?= 1
 
 # ======= Main Entrypoint ========
 up:
@@ -52,7 +52,8 @@ up:
 	docker compose up --build \
 		--scale worker_scraper=${SCRAPER_WORKERS} \
 		--scale worker_extractor=${EXTRACTOR_WORKERS} \
-		postgres redis ollama api frontend worker_scraper worker_extractor
+		--scale worker_reaper=${REAPER_WORKERS} \
+		postgres redis ollama api frontend worker_scraper worker_extractor worker_reaper
 
 # ======= Other Commands ========
 down:
@@ -71,7 +72,8 @@ workers:
 	docker compose up --build \
 		--scale worker_scraper=${SCRAPER_WORKERS} \
 		--scale worker_extractor=${EXTRACTOR_WORKERS} \
-		postgres redis ollama worker_scraper worker_extractor
+		--scale worker_reaper=${REAPER_WORKERS} \
+		postgres redis ollama worker_scraper worker_extractor worker_reaper
 
 scraper_worker:
 	docker compose up --build \
@@ -82,6 +84,11 @@ extractor_worker:
 	docker compose up --build \
 		--scale worker_extractor=${EXTRACTOR_WORKERS} \
 		postgres redis ollama worker_extractor
+
+reaper_worker:
+	docker compose up --build \
+		--scale worker_reaper=${REAPER_WORKERS} \
+		postgres redis ollama worker_reaper
 
 db:
 	docker compose up postgres

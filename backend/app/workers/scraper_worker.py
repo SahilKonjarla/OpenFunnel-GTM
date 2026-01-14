@@ -2,9 +2,11 @@ import time
 from redis import Redis
 from app.core.config import settings
 from app.queue.redis_queue import reserve_task, ack_task, fail_task
-from app.db.session import get_redis
+from app.db.session import get_redis, SessionLocal
 from app.core.logging import init_logging, get_logger
 from app.core.request_context import set_trace_id, clear_trace_id
+from app.services.scraping.providers import fetch_url
+from app.services.storage.job_store import store_raw_response
 
 init_logging("worker_scraper")
 logger = get_logger(__name__)
@@ -28,9 +30,25 @@ while True:
         },
     )
 
+    db = SessionLocal()
     try:
-        # Simulate some work
-        time.sleep(1)
+        url = (task.payload or {}).get("url")
+        if not url:
+            raise ValueError("missing payload.url for scrape task")
+
+        http_status, content_type, headers_json, body_text = fetch_url(url, settings.http_timeout_sec)
+
+        store_raw_response(
+            db,
+            job_posting_id=task.job_posting_id,
+            url=url,
+            http_status=http_status,
+            content_type=content_type,
+            headers_json=headers_json,
+            body_text=body_text,
+        )
+        db.commit()
+
         ack_task(r, task)
         logger.info(
             "task_ok",
@@ -43,7 +61,9 @@ while True:
                 "attempt": task.attempt,
             },
         )
+
     except Exception as e:
+        db.rollback()
         fail_task(r, task, error=str(e), max_attempts=settings.max_attempts)
         logger.exception(
             "task_fail",
@@ -57,4 +77,6 @@ while True:
             },
         )
     finally:
+        db.close()
         clear_trace_id()
+        time.sleep(0.01)

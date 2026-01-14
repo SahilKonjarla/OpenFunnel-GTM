@@ -17,6 +17,13 @@ class Settings(BaseSettings):
     visibility_timeout_sec: int = 60
     max_attempts: int = 8
 
+    #Scraping settings
+    greenhouse_board: str = "stripe"
+    lever_company: str = "netflix"
+
+    seed_job_limit: int = 5
+    http_timeout_sec: int = 20
+
     class Config:
         env_file = ".env"
         extra = "ignore"

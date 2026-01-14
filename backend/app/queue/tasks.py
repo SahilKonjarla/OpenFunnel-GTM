@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import Literal, Any
+from typing import Literal, Any, Optional
 from uuid import uuid4
 from datetime import datetime as dt
 
@@ -9,6 +9,7 @@ class Task(BaseModel):
     run_id: str
     job_posting_id: str
     task_type: Literal["scrape", "extract"]
+    reserved_at: Optional[int] = None
     attempt: int = 0
     created_at: str = Field(default_factory=lambda: dt.utcnow().isoformat())
     payload: dict[str, Any]

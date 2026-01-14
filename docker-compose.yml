@@ -39,6 +39,7 @@ services:
       - postgres
       - redis
     command: ["python3.12", "-m", "app.workers.scraper_worker"]
+    restart: unless-stopped
 
   worker_extractor:
     build: ./backend
@@ -52,6 +53,17 @@ services:
       - redis
       - ollama
     command: ["python3.12", "-m", "app.workers.extractor_worker"]
+    restart: unless-stopped
+
+  worker_reaper:
+    build: ./backend
+    environment:
+      POSTGRES_DSN: postgresql+psycopg2://Sahil:app@postgres:5432/openfunnel
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      - redis
+    command: ["python3.12", "-m", "app.workers.reaper_worker"]
+    restart: unless-stopped
 
   ollama:
     image: ollama/ollama:latest

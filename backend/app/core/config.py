@@ -10,8 +10,8 @@ class Settings(BaseSettings):
     redis_url: str = "redis://redis:6379/0"
 
     # LLM settings
-    ollama_url: str = "http://ollama:11434"
-    ollama_model: str = "gemma3:4b"
+    ollama_url: str = "http://host.docker.internal:11434"
+    ollama_model: str = "gemma3:1b"
 
     # Queue settings
     visibility_timeout_sec: int = 60

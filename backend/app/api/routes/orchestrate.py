@@ -16,9 +16,6 @@ orchestrate_router = APIRouter()
 logger = get_logger(__name__)
 
 def _seed_discovered_jobs(db: Session, source: str, n: int) -> tuple[list[str], dict[str, str]]:
-    """
-    Returns (job_posting_ids, url_by_job_posting_id)
-    """
     if source == "greenhouse":
         jobs = greenhouse_jobs_list(settings.greenhouse_board, n, settings.http_timeout_sec)
         company = settings.greenhouse_board

@@ -10,6 +10,7 @@ class Task(BaseModel):
     job_posting_id: str
     task_type: Literal["scrape", "extract"]
     reserved_at: Optional[int] = None
+    last_error: Optional[str] = None
     attempt: int = 0
     created_at: str = Field(default_factory=lambda: dt.utcnow().isoformat())
     payload: dict[str, Any]

@@ -1,31 +1,23 @@
 from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
-    # Setting environment variables
-    app_env: str = "dev"
+    postgres_dsn: str = "postgresql+psycopg2://app:app@localhost:5432/openfunnel"
+    redis_url: str = "redis://localhost:6379/0"
+
     log_level: str = "INFO"
+    visibility_timeout_sec: int = 300
 
-    # Database + Queue settings
-    postgres_dsn: str = "postgresql+psycopg2://Sahil:app@postgres:5432/openfunnel"
-    redis_url: str = "redis://redis:6379/0"
+    scrape_concurrency: int = 8
+    raw_store_dir: str = "./data/raw"
 
-    # LLM settings
-    ollama_url: str = "http://host.docker.internal:11434"
-    ollama_model: str = "gemma3:4b"
+    ollama_base_url: str = "http://host.docker.internal:11434"
+    ollama_model_small: str = "gemma3:4b"
+    openai_api_key: str | None = None
+    anthropic_api_key: str | None = None
+    high_tier_provider: str = "openai"
+    high_tier_model: str = "gpt-4o-mini"
 
-    # Queue settings
-    visibility_timeout_sec: int = 60
-    max_attempts: int = 8
-
-    #Scraping settings
-    greenhouse_board: str = "stripe"
-    lever_company: str = "netflix"
-
-    seed_job_limit: int = 5
-    http_timeout_sec: int = 20
-
-    class Config:
-        env_file = ".env"
-        extra = "ignore"
+    extract_concurrency: int = 8
+    extract_batch_size: int = 32
 
 settings = Settings()

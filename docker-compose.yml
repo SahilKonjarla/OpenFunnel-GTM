@@ -8,7 +8,7 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - pgdata:/var/lib/postgresql/seed
 
   redis:
     image: redis:7
@@ -22,63 +22,64 @@ services:
       REDIS_URL: redis://redis:6379/0
       OLLAMA_URL: http://host.docker.internal:11434
       OLLAMA_MODEL: gemma3:4b
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      HIGH_TIER_PROVIDER: ${HIGH_TIER_PROVIDER:-openai}
+      HIGH_TIER_MODEL: ${HIGH_TIER_MODEL:-gpt-4o-mini}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      VISIBILITY_TIMEOUT_SEC: ${VISIBILITY_TIMEOUT_SEC:-300}
+      SCRAPE_CONCURRENCY: ${SCRAPE_CONCURRENCY:-8}
+      EXTRACT_CONCURRENCY: ${EXTRACT_CONCURRENCY:-8}
+      EXTRACT_BATCH_SIZE: ${EXTRACT_BATCH_SIZE:-32}
+      RAW_STORE_DIR: /seed/raw
+    volumes:
+      - rawdata:/seed
     depends_on:
       - postgres
       - redis
-      - ollama
     ports:
       - "8000:8000"
-    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
-  worker_scraper:
+  worker_scrape:
     build: ./backend
     environment:
       POSTGRES_DSN: postgresql+psycopg2://Sahil:app@postgres:5432/openfunnel
       REDIS_URL: redis://redis:6379/0
-    depends_on:
-      - postgres
-      - redis
-    command: ["python3.12", "-m", "app.workers.scraper_worker"]
-    restart: unless-stopped
-
-  worker_extractor:
-    build: ./backend
-    environment:
-      POSTGRES_DSN: postgresql+psycopg2://Sahil:app@postgres:5432/openfunnel
-      REDIS_URL: redis://redis:6379/0
-      OLLAMA_URL: http://host.docker.internal:11434
-      OLLAMA_MODEL: gemma3:4b
-    depends_on:
-      - postgres
-      - redis
-      - ollama
-    command: ["python3.12", "-m", "app.workers.extractor_worker"]
-    restart: unless-stopped
-
-  worker_reaper:
-    build: ./backend
-    environment:
-      POSTGRES_DSN: postgresql+psycopg2://Sahil:app@postgres:5432/openfunnel
-      REDIS_URL: redis://redis:6379/0
-    depends_on:
-      - redis
-    command: ["python3.12", "-m", "app.workers.reaper_worker"]
-    restart: unless-stopped
-
-  ollama:
-    image: ollama/ollama:latest
-    ports:
-      - "11434:11434"
+      OLLAMA_BASE_URL: http://host.docker.internal:11434
+      OLLAMA_MODEL_SMALL: gemma3:4b
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      VISIBILITY_TIMEOUT_SEC: ${VISIBILITY_TIMEOUT_SEC:-300}
+      SCRAPE_CONCURRENCY: ${SCRAPE_CONCURRENCY:-8}
+      RAW_STORE_DIR: /seed/raw
     volumes:
-      - ~/.ollama:/root/.ollama
-
-  frontend:
-    build: ./frontend
+      - rawdata:/seed
     depends_on:
-      - api
-    ports:
-      - "3000:3000"
+      - postgres
+      - redis
+    command: python -m app.workers.scrape_worker
+
+  worker_extract:
+    build: ./backend
+    environment:
+      POSTGRES_DSN: postgresql+psycopg2://Sahil:app@postgres:5432/openfunnel
+      REDIS_URL: redis://redis:6379/0
+      OLLAMA_BASE_URL: http://host.docker.internal:11434
+      OLLAMA_MODEL_SMALL: gemma3:4b
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      HIGH_TIER_PROVIDER: ${HIGH_TIER_PROVIDER:-openai}
+      HIGH_TIER_MODEL: ${HIGH_TIER_MODEL:-gpt-4o-mini}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      VISIBILITY_TIMEOUT_SEC: ${VISIBILITY_TIMEOUT_SEC:-300}
+      EXTRACT_CONCURRENCY: ${EXTRACT_CONCURRENCY:-8}
+      EXTRACT_BATCH_SIZE: ${EXTRACT_BATCH_SIZE:-32}
+    depends_on:
+      - postgres
+      - redis
+    command: python -m app.workers.extract_worker
 
 volumes:
   pgdata:
   ollama:
+  rawdata:

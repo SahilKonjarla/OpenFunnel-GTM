@@ -1,103 +1,39 @@
-.DEFAULT_GOAL := help
+SHELL := /bin/bash
 
-# ============== Help ==============
-help:
-	@echo ""
-	@echo "============================================================"
-	@echo "============================================================"
-	@echo "                 OpenFunnel-GTM Commands                    "
-	@echo ""
-	@echo "------------------------ TARGETS ---------------------------"
-	@echo "make up              start all services"
-	@echo "------------------------------------------------------------"
-	@echo "make down            stop all services"
-	@echo "------------------------------------------------------------"
-	@echo "make logs            follow logs"
-	@echo "------------------------------------------------------------"
-	@echo "make api             start only api + deps"
-	@echo "------------------------------------------------------------"
-	@echo "make workers         start only workers + deps"
-	@echo "------------------------------------------------------------"
-	@echo "make scraper_worker  start only scraper worker + deps"
-	@echo "------------------------------------------------------------"
-	@echo "make extract_worker  start only extractor worker + deps"
-	@echo "------------------------------------------------------------"
-	@echo "make reaper_worker   start only reaper worker + deps"
-	@echo "------------------------------------------------------------"
-	@echo "make db              start postgres only"
-	@echo "------------------------------------------------------------"
-	@echo "make redis           start redis only"
-	@echo "------------------------------------------------------------"
-	@echo "make migrate         start alembic"
-	@echo "------------------------------------------------------------"
-	@echo "make migration       new migration"
-	@echo "------------------------------------------------------------"
-	@echo "------------------------- ENV VARS -------------------------"
-	@echo "SCRAPER_WORKERS=N     Number of scraper workers"
-	@echo "EXTRACTOR_WORKERS=N   Number of extractor workers"
-	@echo "============================================================"
-	@echo "============================================================"
-	@echo ""
+.PHONY: up down logs migrate api ui seed worker-scrape worker-extract format lint test
 
-# ============== Config ==============
-SCRAPER_WORKERS ?= 1
-EXTRACTOR_WORKERS ?= 1
-REAPER_WORKERS ?= 1
-
-# ======= Main Entrypoint ========
 up:
-	@echo ""
-	@echo "============================================================"
-	@echo "STARTING SERVICES..."
-	docker compose up --build \
-		--scale worker_scraper=${SCRAPER_WORKERS} \
-		--scale worker_extractor=${EXTRACTOR_WORKERS} \
-		--scale worker_reaper=${REAPER_WORKERS} \
-		postgres redis ollama api frontend worker_scraper worker_extractor worker_reaper
+	docker compose up --build -d
 
-# ======= Other Commands ========
 down:
-	docker compose down
+	docker compose down -v
 
 logs:
-	docker compose logs -f
-
-api:
-	@echo ""
-	@echo "============================================================"
-	@echo "STARTING SERVICES..."
-	docker compose up --build postgres redis ollama api
-
-workers:
-	docker compose up --build \
-		--scale worker_scraper=${SCRAPER_WORKERS} \
-		--scale worker_extractor=${EXTRACTOR_WORKERS} \
-		--scale worker_reaper=${REAPER_WORKERS} \
-		postgres redis ollama worker_scraper worker_extractor worker_reaper
-
-scraper_worker:
-	docker compose up --build \
-		--scale worker_scraper=${SCRAPER_WORKERS} \
-		postgres redis ollama worker_scraper
-
-extractor_worker:
-	docker compose up --build \
-		--scale worker_extractor=${EXTRACTOR_WORKERS} \
-		postgres redis ollama worker_extractor
-
-reaper_worker:
-	docker compose up --build \
-		--scale worker_reaper=${REAPER_WORKERS} \
-		postgres redis ollama worker_reaper
-
-db:
-	docker compose up postgres
-
-redis:
-	docker compose up redis
+	docker compose logs -f --tail=200
 
 migrate:
-	docker compose exec api alembic upgrade head
+	docker compose run --rm api alembic upgrade head
 
-migration:
-	docker compose exec api alembic revision -m "init" --autogenerate
+api:
+	docker compose up --build api
+
+worker-scrape:
+	docker compose up --build worker_scrape
+
+worker-extract:
+	docker compose up --build worker_extract
+
+seed:
+	docker compose run --rm api python -m app.scripts.seed_greenhouse
+
+ui:
+	cd frontend && npm install && npm run dev -- --host
+
+format:
+	docker compose run --rm api ruff format .
+
+lint:
+	docker compose run --rm api ruff check .
+
+test:
+	docker compose run --rm api pytest -q

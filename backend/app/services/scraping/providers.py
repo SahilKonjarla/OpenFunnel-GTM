@@ -7,10 +7,13 @@ Source = Literal["greenhouse", "lever"]
 def greenhouse_jobs_list(board: str, limit: int, timeout_sec: int) -> list[dict[str, Any]]:
     url = f"https://boards-api.greenhouse.io/v1/boards/{board}/jobs?content=true"
     r = httpx.get(url, timeout=timeout_sec)
+    if r.status_code == 404:
+        return []
+
     r.raise_for_status()
     data = r.json()
     jobs = data.get("jobs", [])
-    return jobs[:limit] if limit else jobs
+    return jobs[:limit]
 
 def lever_jobs_page(
     company: str,
@@ -30,7 +33,7 @@ def lever_jobs_page(
     if isinstance(payload, list):
         return payload, None, False
 
-    jobs = payload.get("data", []) if isinstance(payload, dict) else []
+    jobs = payload.get("seed", []) if isinstance(payload, dict) else []
     next_offset = payload.get("next") if isinstance(payload, dict) else None
     has_next = bool(payload.get("hasNext")) if isinstance(payload, dict) else False
     return jobs, next_offset, has_next

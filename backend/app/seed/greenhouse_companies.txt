@@ -1,0 +1,11 @@
+# Expand this list to reach 50k+ postings.
+stripe
+airbnb
+datadog
+coinbase
+notion
+figma
+asana
+roblox
+dropbox
+snowflake

@@ -1,7 +1,7 @@
 from __future__ import annotations
 import hashlib
 from datetime import datetime as dt
-from typing import Any, Optional
+from typing import Any, Optional, Tuple
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from app.db.models import JobPosting, RawResponse, Extraction, Skill, JobSkill
@@ -18,7 +18,7 @@ def upsert_job_posting(
     canonical_url: Optional[str] = None,
     title: Optional[str] = None,
     location_raw: Optional[str] = None,
-) -> JobPosting:
+) -> Tuple[JobPosting, bool]:
     url_hash: Optional[str] = None
     if not external_id and canonical_url:
         url_hash = _sha256(canonical_url)
@@ -33,18 +33,24 @@ def upsert_job_posting(
     existing: Optional[JobPosting] = db.execute(stmt).scalars().first() if stmt is not None else None
 
     if existing:
+        changed = False
         # only fill fields if missing
         if title and not existing.title:
             existing.title = title
+            changed = True
         if location_raw and not existing.location_raw:
             existing.location_raw = location_raw
+            changed = True
         if canonical_url and not existing.canonical_url:
             existing.canonical_url = canonical_url
+            changed = True
         if url_hash and not existing.canonical_url_hash:
             existing.canonical_url_hash = url_hash
+            changed = True
         if company_name and not existing.company_name:
             existing.company_name = company_name
-        return existing
+            changed = True
+        return existing, changed
 
     jp = JobPosting(
         source=source,
@@ -59,7 +65,7 @@ def upsert_job_posting(
     )
     db.add(jp)
     db.flush()
-    return jp
+    return jp, True
 
 def store_raw_response(
     db: Session,

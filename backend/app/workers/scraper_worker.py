@@ -36,7 +36,8 @@ while True:
         if not url:
             raise ValueError("missing payload.url for scrape task")
 
-        http_status, content_type, headers_json, body_text = fetch_url(url, settings.http_timeout_sec)
+        http_status, content_type, headers_json, body_text, final_url = fetch_url(url, settings.http_timeout_sec)
+        url = final_url
 
         store_raw_response(
             db,

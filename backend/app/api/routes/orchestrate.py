@@ -67,6 +67,18 @@ def _seed_discovered_jobs(db: Session, source: str, n: int) -> tuple[list[str], 
 
     return job_ids, url_by_id
 
+def _load_lines(path: str, limit: int | None = None) -> list[str]:
+    out: list[str] = []
+    with open(path, "r", encoding="utf-8") as f:
+        for raw in f:
+            s = raw.strip()
+            if not s or s.startswith("#"):
+                continue
+            out.append(s)
+            if limit and len(out) >= limit:
+                break
+    return out
+
 @orchestrate_router.post("/run/all", tags=["orchestrate"])
 def run_all(db: Session = Depends(get_db), redis: Redis = Depends(get_redis)):
     trace_id = str(uuid4())
@@ -161,5 +173,97 @@ def run_extract(db: Session = Depends(get_db), redis: Redis = Depends(get_redis)
             )
 
         return {"status": "enqueued", "trace_id": trace_id, "run_id": str(run.id), "job_count": len(job_ids)}
+    finally:
+        clear_trace_id()
+
+@orchestrate_router.post("/run/discover", tags=["orchestrate"])
+def run_discover(db: Session = Depends(get_db), redis: Redis = Depends(get_redis)):
+    trace_id = str(uuid4())
+    set_trace_id(trace_id)
+    try:
+        run = create_run(db, source="multi", status="running", notes="run_discover")
+
+        # Option 1: use files if present in settings
+        gh_file = getattr(settings, "greenhouse_boards_file", None)
+        lv_file = getattr(settings, "lever_companies_file", None)
+
+        discover_tasks = 0
+
+        if gh_file:
+            boards = _load_lines(gh_file, limit=getattr(settings, "discovery_board_limit", None))
+            for b in boards:
+                enqueue_task(
+                    redis,
+                    Task(
+                        trace_id=trace_id,
+                        run_id=str(run.id),
+                        job_posting_id=None,
+                        task_type="discover",
+                        payload={
+                            "source": "greenhouse",
+                            "board": b,
+                            "limit": getattr(settings, "discovery_per_target_limit", 500),
+                        },
+                    ),
+                )
+                discover_tasks += 1
+        else:
+            # fallback: single board from env
+            enqueue_task(
+                redis,
+                Task(
+                    trace_id=trace_id,
+                    run_id=str(run.id),
+                    job_posting_id=None,
+                    task_type="discover",
+                    payload={
+                        "source": "greenhouse",
+                        "board": settings.greenhouse_board,
+                        "limit": getattr(settings, "discovery_per_target_limit", settings.seed_job_limit),
+                    },
+                ),
+            )
+            discover_tasks += 1
+
+        if lv_file:
+            companies = _load_lines(lv_file, limit=getattr(settings, "discovery_company_limit", None))
+            for c in companies:
+                enqueue_task(
+                    redis,
+                    Task(
+                        trace_id=trace_id,
+                        run_id=str(run.id),
+                        job_posting_id=None,
+                        task_type="discover",
+                        payload={
+                            "source": "lever",
+                            "company": c,
+                            "limit": getattr(settings, "discovery_per_target_limit", 500),
+                        },
+                    ),
+                )
+                discover_tasks += 1
+        else:
+            enqueue_task(
+                redis,
+                Task(
+                    trace_id=trace_id,
+                    run_id=str(run.id),
+                    job_posting_id=None,
+                    task_type="discover",
+                    payload={
+                        "source": "lever",
+                        "company": settings.lever_company,
+                        "limit": getattr(settings, "discovery_per_target_limit", settings.seed_job_limit),
+                    },
+                ),
+            )
+            discover_tasks += 1
+
+        logger.info(
+            "run_discover_enqueued",
+            extra={"event": "api.run_discover_enqueued", "run_id": str(run.id), "discover_tasks": discover_tasks},
+        )
+        return {"status": "enqueued", "trace_id": trace_id, "run_id": str(run.id), "discover_task_count": discover_tasks}
     finally:
         clear_trace_id()

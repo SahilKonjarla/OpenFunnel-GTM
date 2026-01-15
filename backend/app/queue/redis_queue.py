@@ -6,14 +6,21 @@ from app.core.logging import get_logger
 from app.queue.tasks import Task
 
 logger = get_logger(__name__)
+QUEUE_DISCOVER = "openfunnel:tasks:discover"
 QUEUE_SCRAPE = "openfunnel:tasks:scrape"
 QUEUE_EXTRACT = "openfunnel:tasks:extract"
+
+INFLIGHT_DISCOVER = "openfunnel:inflight:discover"
 INFLIGHT_SCRAPE = "openfunnel:inflight:scrape"
 INFLIGHT_EXTRACT = "openfunnel:inflight:extract"
+
+DLQ_DISCOVER = "openfunnel:dlq:discover"
 DLQ_SCRAPE = "openfunnel:dlq:scrape"
 DLQ_EXTRACT = "openfunnel:dlq:extract"
 
 def _q(task_type: str) -> str:
+    if task_type == "discover":
+        return QUEUE_DISCOVER
     if task_type == "scrape":
         return QUEUE_SCRAPE
     if task_type == "extract":
@@ -22,14 +29,17 @@ def _q(task_type: str) -> str:
 
 
 def _inflight(task_type: str) -> str:
+    if task_type == "discover":
+        return INFLIGHT_DISCOVER
     if task_type == "scrape":
         return INFLIGHT_SCRAPE
     if task_type == "extract":
         return INFLIGHT_EXTRACT
     raise ValueError(f"Unknown task_type: {task_type}")
 
-
 def _dlq(task_type: str) -> str:
+    if task_type == "discover":
+        return DLQ_DISCOVER
     if task_type == "scrape":
         return DLQ_SCRAPE
     if task_type == "extract":
@@ -49,12 +59,21 @@ def reserve_task(redis: Redis, task_type: str, block_seconds: int = 5) -> Option
     if not raw:
         return None
 
-    data = json.loads(raw)
+    # decode to str for consistent json handling
+    raw_str = raw.decode("utf-8") if isinstance(raw, (bytes, bytearray)) else raw
+
+    data = json.loads(raw_str)
     task = Task(**data)
 
-    # stamp reserve time for stale detection
+    # stamp reserve time + unique reserved key
     task.reserved_at = int(time.time())
-    redis.lset(inflight, -1, json.dumps(task.model_dump()))  # update last moved item
+    task.reserved_key = f"{task.task_id}:{task.reserved_at}"
+
+    updated = json.dumps(task.model_dump())
+
+    # IMPORTANT: remove the original moved raw and insert the updated one
+    redis.lrem(inflight, 1, raw_str)
+    redis.rpush(inflight, updated)
 
     logger.info(
         "task_reserved",
@@ -64,18 +83,35 @@ def reserve_task(redis: Redis, task_type: str, block_seconds: int = 5) -> Option
 
 def ack_task(redis: Redis, task: Task) -> None:
     inflight = _inflight(task.task_type)
-    raw = json.dumps(task.model_dump())
-    redis.lrem(inflight, 1, raw)
+
+    # remove by reserved_key (robust)
+    items = redis.lrange(inflight, 0, -1)
+    for raw in items:
+        raw_str = raw.decode("utf-8") if isinstance(raw, (bytes, bytearray)) else raw
+        try:
+            d = json.loads(raw_str)
+        except Exception:
+            continue
+        if d.get("reserved_key") == task.reserved_key:
+            redis.lrem(inflight, 1, raw_str)
+            break
+
     logger.info("task_acked", extra={"event": "queue.ack", "inflight": inflight, "task_id": task.task_id})
 
 def fail_task(redis: Redis, task: Task, *, error: str, max_attempts: int) -> None:
-    """
-    - increments attempt
-    - if attempts remain -> requeue
-    - else -> DLQ
-    Always removes from inflight first.
-    """
     inflight = _inflight(task.task_type)
+
+    items = redis.lrange(inflight, 0, -1)
+    for raw in items:
+        raw_str = raw.decode("utf-8") if isinstance(raw, (bytes, bytearray)) else raw
+        try:
+            d = json.loads(raw_str)
+        except Exception:
+            continue
+        if d.get("reserved_key") == task.reserved_key:
+            redis.lrem(inflight, 1, raw_str)
+            break
+
     raw = json.dumps(task.model_dump())
     redis.lrem(inflight, 1, raw)
 
@@ -99,22 +135,19 @@ def fail_task(redis: Redis, task: Task, *, error: str, max_attempts: int) -> Non
 
 
 def requeue_stale(redis: Redis, task_type: str, visibility_timeout_sec: int, max_to_requeue: int = 50) -> int:
-    """
-    Scan inflight list and requeue tasks whose reserved_at is too old.
-    (Simple and good enough for the take-home.)
-    """
     inflight = _inflight(task_type)
     now = int(time.time())
     requeued = 0
 
-    items = redis.lrange(inflight, 0, max_to_requeue - 1)
-    for raw in items:
-        data = json.loads(raw)
-        reserved_at = data.get("reserved_at") or 0
+    items = redis.lrange(inflight, 0, -1)
+    for raw in items[:max_to_requeue]:
+        raw_str = raw.decode("utf-8") if isinstance(raw, (bytes, bytearray)) else raw
+        data = json.loads(raw_str)
+        reserved_at = int(data.get("reserved_at") or 0)
+
         if reserved_at and (now - reserved_at) > visibility_timeout_sec:
-            # remove from inflight and requeue
-            redis.lrem(inflight, 1, raw)
-            redis.rpush(_q(task_type), raw)
+            redis.lrem(inflight, 1, raw_str)
+            redis.rpush(_q(task_type), raw_str)
             requeued += 1
 
     if requeued:

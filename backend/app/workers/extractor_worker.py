@@ -12,6 +12,7 @@ from app.services.extraction.ollama_client import ollama_chat
 from app.services.extraction.json_parse import parse_json
 from app.services.extraction.prompting import build_extraction_prompt
 from app.services.storage.job_store import store_extraction, upsert_skills_and_links
+from app.services.extraction.schema import ExtractionLLM
 
 init_logging("worker_extractor")
 logger = get_logger(__name__)
@@ -55,9 +56,9 @@ while True:
             timeout_sec=90,
         )
         data = parse_json(out)
-
-        skills = data.pop("skills", []) or []
-        extraction_fields = data
+        parsed = ExtractionLLM.model_validate(data)
+        skills = parsed.skills
+        extraction_fields = parsed.model_dump(exclude={"skills"})
 
         store_extraction(
             db,

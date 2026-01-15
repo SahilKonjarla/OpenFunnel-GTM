@@ -11,7 +11,7 @@ class Settings(BaseSettings):
 
     # LLM settings
     ollama_url: str = "http://host.docker.internal:11434"
-    ollama_model: str = "gemma3:1b"
+    ollama_model: str = "gemma3:4b"
 
     # Queue settings
     visibility_timeout_sec: int = 60

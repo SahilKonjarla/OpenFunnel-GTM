@@ -1,6 +1,5 @@
 from __future__ import annotations
 import datetime as dt
-from pathlib import Path
 from sqlalchemy.orm import Session
 from app.db.session import SessionLocal
 from app.db.models import Run

@@ -1,4 +1,5 @@
 from pydantic_settings import BaseSettings
+import os
 
 class Settings(BaseSettings):
     postgres_dsn: str = "postgresql+psycopg2://app:app@localhost:5432/openfunnel"
@@ -12,7 +13,7 @@ class Settings(BaseSettings):
 
     ollama_base_url: str = "http://host.docker.internal:11434"
     ollama_model_small: str = "gemma3:4b"
-    openai_api_key: str | None = None
+    openai_api_key: str | None = os.environ.get("OPENAI_API_KEY")
     anthropic_api_key: str | None = None
     high_tier_provider: str = "openai"
     high_tier_model: str = "gpt-4o-mini"

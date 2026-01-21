@@ -43,6 +43,7 @@ while True:
 
             parsed = parsed1
             if (settings.openai_api_key or settings.anthropic_api_key) and needs_escalation(parsed1):
+                print("high tier")
                 raw2 = high_tier_chat(high_tier_prompt(jp.description_text))
                 data2 = extract_json(raw2)
                 parsed = ExtractionLLM.model_validate(data2)

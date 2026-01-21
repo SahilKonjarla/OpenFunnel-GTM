@@ -2,6 +2,9 @@ SHELL := /bin/bash
 
 .PHONY: up down logs migrate api ui seed worker-scrape worker-extract format lint test
 
+SCRAPE_WORKERS ?= 1
+EXTRACT_WORKERS ?= 1
+
 up:
 	docker compose up --build -d
 
@@ -18,10 +21,10 @@ api:
 	docker compose up --build api
 
 worker-scrape:
-	docker compose up --build worker_scrape
+	docker compose up -d --scale worker_scrape=$(SCRAPE_WORKERS) worker_scrape
 
 worker-extract:
-	docker compose up --build worker_extract
+	docker compose up -d --scale worker_extract=$(EXTRACT_WORKERS) worker_extract
 
 seed:
 	docker compose run --rm api python -m app.scripts.seed_greenhouse
@@ -37,3 +40,9 @@ lint:
 
 test:
 	docker compose run --rm api pytest -q
+
+demo:
+	$(MAKE) seed
+	$(MAKE) worker-extract
+	$(MAKE) worker-scrape
+	$(MAKE) ui
